@@ -1,6 +1,6 @@
 # Elevator Simulator
 
-An interactive, graphical elevator simulation built with Java using Swing. The simulation implements a target-based collective LOOK algorithm to schedule elevator sweeps, manage priority queues, and coordinate passenger boarding.
+An interactive graphical elevator simulation written in Java with Swing GUI. The simulation implements a target-based collective LOOK algorithm to schedule elevator sweeps, manage priority queues, and coordinate passenger boarding.
 
 ## Directory Structure
 
