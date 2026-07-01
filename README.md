@@ -56,4 +56,10 @@ Follow these steps in your terminal or command prompt:
 
 ## Example Usage
 
-<img src="images/example.gif" width="60%" alt="Elevator Simulator Demo">
+<p align="center">
+   <img src="images/example.gif" width="60%" alt="Elevator Simulator Demo">
+</p>
+
+---
+
+<p align="center">&copy; Copyright 2026 <a href="https://blakerayvid.com">Blake Rayvid</a>. All rights reserved.</p>
