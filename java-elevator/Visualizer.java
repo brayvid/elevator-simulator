@@ -50,7 +50,7 @@ public class Visualizer extends JFrame {
                 }
             }
 
-            // Permanently remove riders who completed their visual duration
+            // Permanently remove riders who completed their ride
             for (Rider r : toRemove) {
                 panel.getFadeCounters().remove(r);
                 building.removeOccupant(r);
@@ -97,7 +97,7 @@ class SimulationPanel extends JPanel {
         this.building = building;
         setBackground(new Color(245, 245, 245));
 
-        // Dynamically calculate EXACT canvas width needed so the rightmost elevator is flush
+        // Dynamically calculate exact canvas width needed so the rightmost elevator is flush
         int numElevators = building.getNumElevators();
         int desiredWidth = shaftXStart + ((numElevators - 1) * shaftSpacing) + shaftWidth + rightMargin;
         setPreferredSize(new Dimension(desiredWidth, 750));

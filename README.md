@@ -1,6 +1,6 @@
 # Elevator Simulator
 
-An interactive graphical elevator simulation written in Java with Swing GUI. The simulation implements a target-based collective LOOK algorithm to schedule elevator sweeps, manage priority queues, and coordinate passenger boarding.
+An interactive graphical elevator simulation written in Java with a Swing GUI. The simulation implements the LOOK algorithm to schedule elevator sweeps, manage travel direction, and coordinate passenger boarding and drop-offs. This classic elevator algorithm is also used to schedule read/write operations on a hard disk platter.
 
 ## Directory Structure
 
@@ -49,9 +49,9 @@ Follow these steps in your terminal or command prompt:
 ## Using the Simulator
 
 * **Call an Elevator**: Click the **▲ (UP)** or **▼ (DOWN)** buttons on the left side of any floor line. This spawns a passenger and calls the elevator to that floor.
-* **Select Destination**: Click a floor button on the pop-up panel to select the embarking passenger's destination floor.
-* **FIFO and Sweep Priority**: The elevator prioritizes the oldest requests in the queue, skipping intermediate opposite-direction calls, and sweeps to pick up matching passengers along its path.
-* **Arrived Passengers**: Once a passenger reaches their destination, they are marked as **Done** and removed.
+* **Select Destination**: When a passenger boards, an interactive control panel pop-up will appear. Click a floor button on the panel to select their destination floor.
+* **LOOK Algorithm Sweeping**: The elevator travels continuously in its active direction (UP or DOWN), dropping off occupants and picking up waiting passengers traveling in that same direction. It only reverses course when no requests remain ahead of it.
+* **Arrived Passengers**: Once a passenger reaches their destination, they are marked **Done** and removed.
 
 
 ## Example Usage
