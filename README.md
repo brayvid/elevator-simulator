@@ -1,6 +1,6 @@
 # Elevator Simulator
 
-An interactive graphical elevator simulation written in Java with a Swing GUI. The simulation implements the LOOK algorithm to schedule elevator sweeps, manage travel direction, and coordinate passenger boarding and drop-offs. This classic elevator algorithm is also used to schedule read/write operations within a hard disk platter.
+An interactive graphical elevator simulation written in Java with a Swing GUI. The simulation implements the LOOK algorithm to schedule elevator sweeps, manage travel direction, and coordinate passenger boarding and drop-offs.
 
 ## Directory Structure
 
