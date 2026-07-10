@@ -27,6 +27,38 @@ java-elevator/
 
 * **Java Development Kit (JDK)**: Version 8 or higher is required to compile and run the application.
 
+### Installing Java (If Not Already Installed)
+
+To verify if you have the JDK installed, open your terminal or command prompt and run:
+```bash
+java -version
+javac -version
+```
+If either command is not recognized, you will need to install the JDK using one of the methods below:
+
+#### **Windows**
+* **Via Command Line**: Open PowerShell or Command Prompt as administrator and run:
+  ```cmd
+  winget install EclipseAdoptium.Temurin.17.JDK
+  ```
+* **Manual Installation**: Download and run the installer for JDK 17 or 21 from [Adoptium (Eclipse Temurin)](https://adoptium.net/). Ensure the option to **"Add to PATH"** is enabled during the setup process.
+
+#### **macOS**
+* **Via Homebrew**: Open Terminal and run:
+  ```bash
+  brew install openjdk
+  ```
+* **Manual Installation**: Download and run the macOS `.pkg` installer from [Adoptium (Eclipse Temurin)](https://adoptium.net/). Make sure to select the correct architecture for your system (Apple Silicon/M-series or Intel).
+
+#### **Linux (Ubuntu/Debian)**
+Open your terminal and run:
+```bash
+sudo apt update
+sudo apt install default-jdk
+```
+
+---
+
 ## How to Run
 
 Follow these steps in your terminal or command prompt:
