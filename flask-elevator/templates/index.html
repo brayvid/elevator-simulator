@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Elevator Simulator | Blake Rayvid</title>
+    <style>
+        * { box-sizing: border-box; user-select: none; }
+        body {
+            margin: 0; padding: 20px; background-color: #e9ecef;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .container {
+            display: flex; gap: 20px; background: #fff; padding: 15px;
+            border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            position: relative;
+        }
+        .canvas-card { display: flex; flex-direction: column; align-items: center; }
+        canvas {
+            border: 1px solid #dcdcdc; border-radius: 4px;
+            background-color: #f5f5f5; cursor: pointer; display: block;
+        }
+        .sidebar { width: 320px; display: flex; flex-direction: column; gap: 15px; }
+        .panel {
+            background: #fafafa; border: 1px solid #e0e0e0;
+            border-radius: 6px; padding: 12px;
+        }
+        .panel h3 {
+            margin: 0 0 10px 0; font-size: 14px; color: #333;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            border-bottom: 2px solid #ddd; padding-bottom: 5px;
+        }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        button.btn {
+            padding: 8px 12px; font-size: 13px; font-weight: bold;
+            border: 1px solid #bbb; border-radius: 4px; background: #fff;
+            cursor: pointer; transition: all 0.15s ease;
+        }
+        button.btn:hover:not(:disabled) { background: #eee; }
+        button.btn:active:not(:disabled) { transform: translateY(1px); }
+        button.btn-primary { background: #007bff; color: #fff; border-color: #0069d9; }
+        button.btn-primary:hover:not(:disabled) { background: #0069d9; }
+        .console-logs {
+            background: #1e1e1e; color: #d4d4d4; font-family: Consolas, monospace;
+            font-size: 11px; height: 520px; overflow-y: auto; padding: 8px;
+            border-radius: 4px; line-height: 1.4;
+        }
+        .console-logs div { margin-bottom: 3px; word-break: break-all; }
+
+        /* Destination Selection Modal */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.45); display: none;
+            justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-card {
+            background: #ffffff; width: 380px; border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.25); overflow: hidden;
+            border: 1px solid #ccc;
+        }
+        .modal-header { padding: 16px 16px 8px 16px; text-align: center; }
+        .modal-header h4 { margin: 0; font-size: 15px; color: #111; }
+        .modal-header p { margin: 6px 0 0 0; font-size: 12px; color: #555; }
+        .modal-body { padding: 12px 16px; }
+        .floor-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+            max-height: 380px; overflow-y: auto;
+        }
+        .floor-btn {
+            padding: 10px; font-size: 12px; font-weight: bold;
+            border: 1px solid #007bff; background: #f0f7ff; color: #0056b3;
+            border-radius: 4px; cursor: pointer; transition: all 0.1s ease;
+        }
+        .floor-btn:hover:not(:disabled) { background: #007bff; color: #fff; }
+        .floor-btn:disabled {
+            border-color: #ddd; background: #f2f2f2; color: #aaa; cursor: not-allowed;
+        }
+        .modal-footer {
+            padding: 10px 16px; background: #f8f9fa; border-top: 1px solid #eee; text-align: right;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="canvas-card">
+            <canvas id="elevatorCanvas" width="620" height="750"></canvas>
+        </div>
+
+        <div class="sidebar">
+            <div class="panel">
+                <h3>Simulation Controls</h3>
+                <div class="controls">
+                    <button class="btn btn-primary" id="togglePlayBtn">Pause</button>
+                    <button class="btn" id="resetBtn">Reset Building</button>
+                </div>
+            </div>
+
+            <div class="panel" style="flex: 1; display: flex; flex-direction: column;">
+                <h3>Event Logs</h3>
+                <div class="console-logs" id="consoleLogs"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Destination Selection Modal -->
+    <div id="destinationModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h4 id="modalTitle">Select Destination</h4>
+                <p>Please select their destination floor below:</p>
+            </div>
+            <div class="modal-body">
+                <div id="modalFloorGrid" class="floor-grid"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" id="modalCancelBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MARGIN_Y = 50;
+        const BUTTON_WIDTH = 22;
+        const BUTTON_HEIGHT = 20;
+        const BUTTON_X_UP = 120;
+        const BUTTON_X_DOWN = 150;
+        const QUEUE_RIGHT_BOUND = 420;
+
+        const SHAFT_X_START = 450;
+        const SHAFT_SPACING = 120;
+        const SHAFT_WIDTH = 70;
+        const RIGHT_MARGIN = 50;
+
+        const canvas = document.getElementById("elevatorCanvas");
+        const ctx = canvas.getContext("2d");
+        const logBox = document.getElementById("consoleLogs");
+
+        const modal = document.getElementById("destinationModal");
+        const modalTitle = document.getElementById("modalTitle");
+        const modalFloorGrid = document.getElementById("modalFloorGrid");
+        const modalCancelBtn = document.getElementById("modalCancelBtn");
+
+        let simState = {
+            numFloors: 10,
+            numElevators: 1,
+            floors: [
+                { floorNumber: 0, name: "Lobby", upPressed: false, downPressed: false, waitingRiderIds: [] },
+                { floorNumber: 1, name: "Floor 2", upPressed: false, downPressed: false, waitingRiderIds: [] },
+                { floorNumber: 2, name: "Floor 3", upPressed: false, downPressed: false, waitingRiderIds: [] },
+                { floorNumber: 3, name: "Floor 4", upPressed: false, downPressed: false, waitingRiderIds: [] },
+                { floorNumber: 4, name: "Floor 5", upPressed: false, downPressed: false, waitingRiderIds: [] },
+                { floorNumber: 5, name: "Floor 6", upPressed: false, downPressed: false, waitingRiderIds: [] },
+                { floorNumber: 6, name: "Floor 7", upPressed: false, downPressed: false, waitingRiderIds: [] },
+                { floorNumber: 7, name: "Floor 8", upPressed: false, downPressed: false, waitingRiderIds: [] },
+                { floorNumber: 8, name: "Floor 9", upPressed: false, downPressed: false, waitingRiderIds: [] },
+                { floorNumber: 9, name: "Roof", upPressed: false, downPressed: false, waitingRiderIds: [] }
+            ],
+            elevators: [{ id: 1, currentFloor: 0, currentWeight: 0, weightLimit: 2000, occupants: [], direction: "IDLE", doorsOpen: false }],
+            occupants: [],
+            fadeCounters: {},
+            logs: ["Simulator initialized. Click ▲ or ▼ to spawn passengers."]
+        };
+
+        let isRunning = true;
+        let timerInterval = null;
+        let wasRunningBeforeModal = false;
+
+        async function fetchState() {
+            try {
+                const res = await fetch("/api/state");
+                if (res.ok) {
+                    simState = await res.json();
+                    render();
+                }
+            } catch (err) {
+                console.warn("Could not connect to /api/state:", err);
+            }
+        }
+
+        async function tickSimulation() {
+            try {
+                const res = await fetch("/api/tick", { method: "POST" });
+                if (res.ok) {
+                    simState = await res.json();
+                    render();
+                }
+            } catch (err) {
+                console.error("Tick error:", err);
+            }
+        }
+
+        async function sendFloorCall(floorNumber, direction, destFloor) {
+            try {
+                const res = await fetch("/api/call", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        floor: floorNumber,
+                        direction: direction,
+                        destination: destFloor
+                    })
+                });
+                if (res.ok) {
+                    simState = await res.json();
+                    render();
+                }
+            } catch (err) {
+                console.error("Call error:", err);
+            }
+        }
+
+        async function resetBuilding() {
+            try {
+                const res = await fetch("/api/reset", { method: "POST" });
+                if (res.ok) {
+                    simState = await res.json();
+                    render();
+                }
+            } catch (err) {
+                console.error("Reset error:", err);
+            }
+        }
+
+        function promptDestination(originFloor, direction) {
+            if (!simState) return;
+
+            wasRunningBeforeModal = isRunning;
+            if (isRunning) {
+                clearInterval(timerInterval);
+            }
+
+            const originFloorName = simState.floors[originFloor].name;
+            const dirSuffix = direction === "UP" ? "Up" : "Down";
+            modalTitle.innerText = `Rider calls at ${originFloorName} going ${dirSuffix}`;
+
+            modalFloorGrid.innerHTML = "";
+            const numFloors = simState.numFloors;
+
+            for (let f = numFloors - 1; f >= 0; f--) {
+                const floorObj = simState.floors[f];
+                const btn = document.createElement("button");
+                btn.className = "floor-btn";
+                btn.innerText = floorObj.name;
+
+                if (f === originFloor) {
+                    btn.innerText = `${floorObj.name} (Here)`;
+                    btn.disabled = true;
+                } else if (direction === "UP" && f > originFloor) {
+                    btn.disabled = false;
+                    btn.onclick = () => {
+                        closeModal();
+                        sendFloorCall(originFloor, direction, f);
+                    };
+                } else if (direction === "DOWN" && f < originFloor) {
+                    btn.disabled = false;
+                    btn.onclick = () => {
+                        closeModal();
+                        sendFloorCall(originFloor, direction, f);
+                    };
+                } else {
+                    btn.disabled = true;
+                }
+
+                modalFloorGrid.appendChild(btn);
+            }
+
+            modal.style.display = "flex";
+        }
+
+        function closeModal() {
+            modal.style.display = "none";
+            if (wasRunningBeforeModal) {
+                startTimer();
+            }
+        }
+
+        modalCancelBtn.onclick = closeModal;
+
+        function render() {
+            if (!simState) return;
+
+            const width = canvas.width;
+            const height = canvas.height;
+            const numFloors = simState.numFloors;
+            const usableHeight = height - (2 * MARGIN_Y);
+            const floorHeight = Math.floor(usableHeight / numFloors);
+
+            ctx.clearRect(0, 0, width, height);
+
+            ctx.font = "bold 12px SansSerif";
+            ctx.fillStyle = "#333333";
+            ctx.fillText("Click ▲ or ▼ to spawn a passenger and select destination:", 50, 30);
+
+            // 1. Draw Floors & Floor Buttons
+            for (let i = 0; i < numFloors; i++) {
+                const yLine = height - MARGIN_Y - (i * floorHeight);
+                const buttonY = yLine - 25;
+                const floorObj = simState.floors[i];
+
+                ctx.strokeStyle = "#cccccc";
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(50, yLine);
+                ctx.lineTo(width - RIGHT_MARGIN, yLine);
+                ctx.stroke();
+
+                ctx.font = "12px SansSerif";
+                ctx.fillStyle = "#333333";
+                ctx.fillText(floorObj.name, 50, yLine - 5);
+
+                // UP Button
+                if (i < numFloors - 1) {
+                    ctx.fillStyle = floorObj.upPressed ? "#ff8c00" : "#ffffff";
+                    ctx.fillRect(BUTTON_X_UP, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT);
+                    ctx.strokeStyle = "#000000";
+                    ctx.strokeRect(BUTTON_X_UP, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT);
+                    ctx.fillStyle = "#000000";
+                    ctx.fillText("▲", BUTTON_X_UP + 5, buttonY + 14);
+                }
+
+                // DOWN Button
+                if (i > 0) {
+                    ctx.fillStyle = floorObj.downPressed ? "#ff8c00" : "#ffffff";
+                    ctx.fillRect(BUTTON_X_DOWN, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT);
+                    ctx.strokeStyle = "#000000";
+                    ctx.strokeRect(BUTTON_X_DOWN, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT);
+                    ctx.fillStyle = "#000000";
+                    ctx.fillText("▼", BUTTON_X_DOWN + 5, buttonY + 14);
+                }
+
+                // 2. Draw Waiting & Arrived Riders
+                let currentX = QUEUE_RIGHT_BOUND;
+                const occupants = simState.occupants || [];
+
+                for (let r of occupants) {
+                    if (r.elevatorId === null && r.currentFloor === i) {
+                        const isWaiting = floorObj.waitingRiderIds.includes(r.id);
+                        const idStr = String(r.id);
+
+                        ctx.font = "bold 9px SansSerif";
+                        const textWidth = ctx.measureText(idStr).width;
+                        const iconHeight = 14;
+                        const iconWidth = Math.max(14, textWidth + 8);
+
+                        const riderX = currentX - iconWidth;
+                        const iconY = yLine - 25;
+                        const textX = riderX + (iconWidth - textWidth) / 2;
+                        const textY = iconY + 10;
+
+                        if (isWaiting) {
+                            ctx.fillStyle = "rgb(70, 130, 180)";
+                            drawRoundRect(ctx, riderX, iconY, iconWidth, iconHeight, iconHeight / 2, true, false);
+                            ctx.fillStyle = "#ffffff";
+                            ctx.fillText(idStr, textX, textY);
+                        } else {
+                            let alpha = 1.0;
+                            if (simState.fadeCounters && simState.fadeCounters[r.id] !== undefined) {
+                                alpha = simState.fadeCounters[r.id] / 2.0;
+                            }
+                            ctx.save();
+                            ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+
+                            ctx.fillStyle = "rgb(46, 139, 87)";
+                            drawRoundRect(ctx, riderX, iconY, iconWidth, iconHeight, iconHeight / 2, true, false);
+                            ctx.fillStyle = "#ffffff";
+                            ctx.fillText(idStr, textX, textY);
+
+                            ctx.font = "bold 10px SansSerif";
+                            ctx.fillStyle = "rgb(46, 139, 87)";
+                            const doneWidth = ctx.measureText("Done").width;
+                            ctx.fillText("Done", riderX + (iconWidth - doneWidth) / 2, yLine - 30);
+                            ctx.restore();
+                        }
+
+                        currentX = riderX - 18;
+                    }
+                }
+            }
+
+            // 3. Draw Elevators & Shafts
+            const elevators = simState.elevators || [];
+            for (let i = 0; i < elevators.length; i++) {
+                const elev = elevators[i];
+                const x = SHAFT_X_START + (i * SHAFT_SPACING);
+                const currentFloor = elev.currentFloor;
+                const y = height - MARGIN_Y - (currentFloor * floorHeight) - floorHeight + 5;
+
+                ctx.fillStyle = "#e6e6e6";
+                ctx.fillRect(x, MARGIN_Y, SHAFT_WIDTH, usableHeight);
+                ctx.strokeStyle = "#808080";
+                ctx.strokeRect(x, MARGIN_Y, SHAFT_WIDTH, usableHeight);
+
+                ctx.fillStyle = elev.doorsOpen ? "rgb(144, 238, 144)" : "rgb(112, 128, 144)";
+                ctx.fillRect(x + 5, y, SHAFT_WIDTH - 10, floorHeight - 10);
+                ctx.strokeStyle = "#000000";
+                ctx.strokeRect(x + 5, y, SHAFT_WIDTH - 10, floorHeight - 10);
+
+                ctx.fillStyle = "#000000";
+                ctx.font = "11px SansSerif";
+                ctx.fillText("E" + elev.id, x + 10, y + 18);
+                ctx.fillText("Occ: " + elev.occupants.length, x + 10, y + 33);
+
+                let dirSymbol = "■";
+                if (elev.direction === "UP") dirSymbol = "▲";
+                else if (elev.direction === "DOWN") dirSymbol = "▼";
+                ctx.fillText(dirSymbol, x + 50, y + 18);
+            }
+
+            // 4. Update Logs
+            if (simState.logs) {
+                logBox.innerHTML = simState.logs.map(line => `<div>${escapeHtml(line)}</div>`).join("");
+                logBox.scrollTop = logBox.scrollHeight;
+            }
+        }
+
+        function drawRoundRect(ctx, x, y, width, height, radius, fill, stroke) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+            if (fill) ctx.fill();
+            if (stroke) ctx.stroke();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.innerText = text;
+            return div.innerHTML;
+        }
+
+        // Canvas Click Listener
+        canvas.addEventListener("mousedown", (e) => {
+            if (!simState) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const numFloors = simState.numFloors;
+            const height = canvas.height;
+            const usableHeight = height - (2 * MARGIN_Y);
+            const floorHeight = Math.floor(usableHeight / numFloors);
+
+            for (let i = 0; i < numFloors; i++) {
+                const yLine = height - MARGIN_Y - (i * floorHeight);
+                const buttonY = yLine - 25;
+
+                if (mouseY >= buttonY && mouseY <= buttonY + BUTTON_HEIGHT) {
+                    if (i < numFloors - 1 && mouseX >= BUTTON_X_UP && mouseX <= BUTTON_X_UP + BUTTON_WIDTH) {
+                        promptDestination(i, "UP");
+                        return;
+                    }
+                    if (i > 0 && mouseX >= BUTTON_X_DOWN && mouseX <= BUTTON_X_DOWN + BUTTON_WIDTH) {
+                        promptDestination(i, "DOWN");
+                        return;
+                    }
+                }
+            }
+        });
+
+        // Controls
+        const togglePlayBtn = document.getElementById("togglePlayBtn");
+        togglePlayBtn.addEventListener("click", () => {
+            isRunning = !isRunning;
+            togglePlayBtn.innerText = isRunning ? "Pause" : "Play";
+            togglePlayBtn.className = isRunning ? "btn btn-primary" : "btn";
+            if (isRunning) {
+                startTimer();
+            } else {
+                clearInterval(timerInterval);
+            }
+        });
+
+        document.getElementById("resetBtn").addEventListener("click", () => {
+            resetBuilding();
+        });
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(tickSimulation, 1000);
+        }
+
+        // Initialize display and start auto-tick loop
+        render();
+        fetchState().then(() => {
+            startTimer();
+        });
+    </script>
+</body>
+</html>
