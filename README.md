@@ -1,5 +1,7 @@
 # Elevator Simulator
 
+> **Web Version Available:** This project has been [ported to JavaScript](https://github.com/brayvid/science-sims/tree/main/misc/elevator) and runs entirely in the browser (no installation or backend required). Run it here: [sims.blakerayvid.com/misc/elevator](https://sims.blakerayvid.com/misc/elevator).
+
 An interactive graphical elevator simulation written in Java with a Swing GUI. The simulation implements the LOOK algorithm to schedule elevator sweeps, manage travel direction, and coordinate passenger boarding and drop-offs.
 
 ## Directory Structure
